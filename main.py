@@ -3,9 +3,10 @@ import os
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-
+from pathlib import Path
 from ml.data import apply_label, process_data
 from ml.model import inference, load_model
+
 
 # DO NOT MODIFY
 class Data(BaseModel):
@@ -24,23 +25,35 @@ class Data(BaseModel):
     capital_gain: int = Field(..., example=0, alias="capital-gain")
     capital_loss: int = Field(..., example=0, alias="capital-loss")
     hours_per_week: int = Field(..., example=40, alias="hours-per-week")
-    native_country: str = Field(..., example="United-States", alias="native-country")
+    native_country: str = Field(
+        ...,
+        example="United-States",
+        alias="native-country"
+    )
 
-path = None # TODO: enter the path for the saved encoder 
-encoder = load_model(path)
 
-path = None # TODO: enter the path for the saved model 
-model = load_model(path)
+# Set up path as in other files
+ROOT = Path(__file__).resolve().parent
+ENCODER_PATH = os.path.join(ROOT, "model", "encoder.pkl")
+MODEL_PATH = os.path.join(ROOT, "model", "model.pkl")
+
+
+# path = None # TODO: enter the path for the saved encoder
+encoder = load_model(ENCODER_PATH)
+
+# path = None # TODO: enter the path for the saved model
+model = load_model(MODEL_PATH)
 
 # TODO: create a RESTful API using FastAPI
-app = None # your code here
+app = FastAPI(title="Income Classification API")  # your code here
+
 
 # TODO: create a GET on the root giving a welcome message
 @app.get("/")
 async def get_root():
     """ Say hello!"""
     # your code here
-    pass
+    return {"message": "Welcome to the Machine Learning DevOps Homework API."}
 
 
 # TODO: create a POST on a different path that does model inference
@@ -49,8 +62,8 @@ async def post_inference(data: Data):
     # DO NOT MODIFY: turn the Pydantic model into a dict.
     data_dict = data.dict()
     # DO NOT MODIFY: clean up the dict to turn it into a Pandas DataFrame.
-    # The data has names with hyphens and Python does not allow those as variable names.
-    # Here it uses the functionality of FastAPI/Pydantic/etc to deal with this.
+    # The data has names with hyphens and Python does not allow those as varia
+    # Here it uses the functionality of FastAPI/Pydantic/etc to deal with this
     data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
     data = pd.DataFrame.from_dict(data)
 
@@ -69,6 +82,12 @@ async def post_inference(data: Data):
         # use data as data input
         # use training = False
         # do not need to pass lb as input
+        data,
+        categorical_features=cat_features,
+        label=None,
+        training=False,
+        encoder=encoder,
     )
-    _inference = None # your code here to predict the result using data_processed
+    # your code here to predict the result using data_processed
+    _inference = inference(model, data_processed)
     return {"result": apply_label(_inference)}
